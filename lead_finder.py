@@ -1,16 +1,49 @@
 import os
-from google import genai
+import requests
 
-api_key = os.environ.get("GEMINI_API_KEY")
+api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
 
 if not api_key:
-    raise RuntimeError("GEMINI_API_KEY was not found.")
+    raise RuntimeError("GOOGLE_MAPS_API_KEY was not found.")
 
-client = genai.Client(api_key=api_key)
+url = "https://places.googleapis.com/v1/places:searchText"
 
-response = client.models.generate_content(
-    model="gemini-3.8-flash",
-    contents="Reply with exactly: JedXStudio Lead Hunter is connected."
-)
+headers = {
+    "Content-Type": "application/json",
+    "X-Goog-Api-Key": api_key,
+    "X-Goog-FieldMask": (
+        "places.displayName,"
+        "places.formattedAddress,"
+        "places.nationalPhoneNumber,"
+        "places.websiteUri"
+    ),
+}
 
-print(response.text)
+data = {
+    "textQuery": "web design businesses in Port Harcourt, Nigeria"
+}
+
+response = requests.post(url, headers=headers, json=data, timeout=30)
+
+if response.status_code != 200:
+    raise RuntimeError(
+        f"Google Places API error {response.status_code}: {response.text}"
+    )
+
+result = response.json()
+
+places = result.get("places", [])
+
+print(f"Found {len(places)} businesses.")
+
+for place in places:
+    name = place.get("displayName", {}).get("text", "Unknown")
+    address = place.get("formattedAddress", "No address")
+    phone = place.get("nationalPhoneNumber", "No phone")
+    website = place.get("websiteUri", "No website")
+
+    print("\n--- BUSINESS ---")
+    print(f"Name: {name}")
+    print(f"Address: {address}")
+    print(f"Phone: {phone}")
+    print(f"Website: {website}")
